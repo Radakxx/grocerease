@@ -1,0 +1,47 @@
+# Logs
+*.log
+log.txt
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# MacOS
+.DS_Store
+Thumbs.db
+
+# Node dependencies
+node_modules/
+
+# Env files (commit only template examples)
+.env
+.env.*
+!.env.example
+
+# Build output
+/www
+/dist
+coverage/
+
+# Ionic / Capacitor / Android
+android/.gradle/
+android/build
+android/app/build
+android/local.properties
+android/app/*.keystore
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+
+# Android Studio
+/.idea/
+android/.idea/
+*.iml
+*.hprof
+
+# VS Code
+/.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
