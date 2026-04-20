@@ -56,32 +56,38 @@
           </ion-label>
         </ion-item>
       </ion-list>
+    </ion-content>
 
+    <!-- Teleport to ion-app (not body): body-level z-index would paint above all in-app overlays (e.g. settings modal at ~20000). -->
+    <Teleport to="ion-app">
       <div
-        v-if="historyEnabled && historyItems.length > 0"
-        class="history-flush-button-wrapper"
+        v-if="showFlushButton"
+        class="history-flush-fixed"
       >
-        <ion-fab-button
+        <ion-button
           class="history-flush-button"
+          fill="outline"
           aria-label="Flush history"
           @click="handleFlushHistory"
         >
-          <span class="history-flush-text">Flush</span>
-        </ion-fab-button>
+          Flush
+        </ion-button>
       </div>
-    </ion-content>
+    </Teleport>
   </ion-page>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch, inject, onMounted, onUnmounted } from 'vue';
-import { IonPage, IonTitle, IonContent, IonList, IonListHeader, IonItem, IonIcon, IonLabel, IonCheckbox, IonFabButton } from '@ionic/vue';
+import { useRoute } from 'vue-router';
+import { IonPage, IonTitle, IonContent, IonList, IonListHeader, IonItem, IonIcon, IonLabel, IonCheckbox, IonButton } from '@ionic/vue';
 import { useItemsList, type ShoppingListItem, type OneTimeItem } from '@/composables/items';
 import ShoppingListItemComponent from '@/components/ShoppingListItem.vue';
 import AddOneTimeItemModal from '@/components/AddOneTimeItemModal.vue';
 import { useSettings } from '@/composables/settings';
 import { useHistory, type HistoryEntry, type RegularItemSnapshot, type OneTimeItemSnapshot } from '@/composables/history';
 
+const route = useRoute();
 const { historyEnabled } = useSettings();
 
 const { 
@@ -98,6 +104,13 @@ const {
   flushHistory,
   removeHistoryEntry,
 } = useHistory();
+
+const showFlushButton = computed(
+  () =>
+    historyEnabled.value &&
+    historyItems.value.length > 0 &&
+    route.path.includes('/tabs/tab2'),
+);
 const oneTimeItemModal = ref<InstanceType<typeof AddOneTimeItemModal>>();
 const registerAddHandler = inject<(path: string, fn: (() => void) | null) => void>('registerAddHandler')!;
 
@@ -378,44 +391,34 @@ const handleUndoHistory = async (entry: HistoryEntry) => {
   opacity: 0.7;
 }
 
-.history-flush-button-wrapper {
-  position: absolute;
-  bottom: 120px; /* sits well above the Add FAB to avoid overlap */
+/* Inside ion-app: above tab bar (~100) and Add FAB (101), below Ionic overlays (ion-modal uses 20000+) */
+.history-flush-fixed {
+  position: fixed;
   left: 0;
   right: 0;
-  height: 80px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 100px);
+  z-index: 150;
   display: flex;
-  align-items: flex-end;
   justify-content: center;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  align-items: center;
   pointer-events: none;
-  z-index: 120;
 }
 
-.history-flush-button-wrapper .history-flush-button {
+.history-flush-fixed .history-flush-button {
   pointer-events: auto;
-  border-radius: 10px; /* squared-off rectangle */
+  margin: 0;
+  min-width: 180px;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 600;
+  --border-width: 2px;
+  --border-color: #2563eb;
+  --border-style: solid;
+  --color: #2563eb;
   --background: transparent;
   --background-activated: rgba(37, 99, 235, 0.08);
   --background-hover: rgba(37, 99, 235, 0.06);
-  --color: #2563eb;
-  width: 180px;
-  height: 34px; /* small height */
-  --size: 34px; /* keeps internal fab sizing consistent */
-  border: 2px solid #2563eb;
-  margin-bottom: 14px; /* sit slightly above the tab bar area */
   --box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.15);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 0 16px;
-}
-
-.history-flush-text {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1;
-  color: #2563eb;
+  --border-radius: 10px;
 }
 </style>
