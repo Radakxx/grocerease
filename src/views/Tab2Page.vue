@@ -59,7 +59,7 @@
     </ion-content>
 
     <!-- Teleport to ion-app (not body): body-level z-index would paint above all in-app overlays (e.g. settings modal at ~20000). -->
-    <Teleport to="ion-app">
+    <Teleport v-if="teleportTarget" :to="teleportTarget">
       <div
         v-if="showFlushButton"
         class="history-flush-fixed"
@@ -89,6 +89,11 @@ import { useHistory, type HistoryEntry, type RegularItemSnapshot, type OneTimeIt
 
 const route = useRoute();
 const { historyEnabled } = useSettings();
+
+// During dev hot-reload / full reloads, the Teleport target (`ion-app`) can be torn down
+// before this component unmount cleanup runs. Guarding the Teleport with a real element
+// reference prevents Vue from trying to patch/unpatch against a missing target.
+const teleportTarget = ref<HTMLElement | null>(null);
 
 const { 
   items, 
@@ -155,6 +160,7 @@ const collectCheckedItems = (itemList: ShoppingListItem[], checkedSet: Set<Shopp
 };
 
 onMounted(() => {
+  teleportTarget.value = document.querySelector('ion-app');
   registerAddHandler('/tabs/tab2', () => openOneTimeItemModal());
 });
 
@@ -285,6 +291,13 @@ const handleUndoHistory = async (entry: HistoryEntry) => {
 </script>
 
 <style>
+/* Ionic computes scroll insets dynamically in fullscreen mode. On Tab2 those insets
+   can become much larger than the real content, creating a long blank scroll tail.
+   Force a sane bottom padding on the actual scroll element. */
+.shopping-list-page ion-content::part(scroll) {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 92px) !important;
+}
+
 /* Right side: Ionic adds safe area only on .item-inner's right, so we zero end padding
    so the row/checkbox extends to the safe area edge (left side uses padding-start only). */
 .shopping-list-page ion-list ion-item {
