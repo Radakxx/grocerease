@@ -1,6 +1,9 @@
 <template>
   <ion-item-sliding @ionSwipe="$emit('swipe', $event, item)">
-    <ion-item :style="{ paddingLeft: `${depth * 20}px` }">
+    <ion-item
+        :class="['item-legacy', `note-layout-${noteRowLayoutClass}`, { 'has-note': !!item.note }]"
+        :style="{ paddingLeft: `${depth * 20}px` }"
+      >
       <!-- Conditionally render reorder icon only when custom sorting is enabled -->
       <div v-if="customSortEnabled" slot="start" class="reorder-wrapper" :class="{ 'reorder-disabled': isReorderDisabled }">
         <ion-reorder></ion-reorder>
@@ -24,7 +27,11 @@
       </ion-button>
       <ion-label class="item-label">
         <span class="item-name clickable" @click.stop="$emit('edit-item', item)">{{ item.name }}</span>
-        <span v-if="item.note" class="item-note clickable" @click.stop="$emit('edit-item', item)"> • {{ item.note }}</span>
+        <span
+          v-if="item.note"
+          class="item-note clickable"
+          @click.stop="$emit('edit-item', item)"
+        >{{ item.note }}</span>
       </ion-label>
       <ion-checkbox
         slot="end"
@@ -115,6 +122,9 @@ import {
 } from '@ionic/vue';
 import { chevronDown, chevronForward, bagAdd, trash } from 'ionicons/icons';
 import type { ShoppingListItem } from '@/composables/items';
+import { useSettings } from '@/composables/settings';
+
+const { noteRowLayoutClass } = useSettings();
 
 const props = defineProps<{
   item: ShoppingListItem;
@@ -242,23 +252,6 @@ const handleChildReorder = (event: CustomEvent) => {
 <style scoped>
 ion-item {
   --min-height: 56px;
-}
-
-.item-label {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
-}
-
-.item-name {
-  font-weight: 500;
-}
-
-.item-note {
-  color: var(--ion-color-medium);
-  font-size: 0.9em;
-  margin-left: 4px;
 }
 
 .clickable {

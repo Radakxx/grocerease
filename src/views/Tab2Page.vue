@@ -10,10 +10,10 @@
       <ion-list ref="ionListRef" lines="full" v-if="checkedItemsCount > 0 || oneTimeItems.length > 0">
         <!-- One-time items -->
         <div v-for="(item, index) in oneTimeItems" :key="item.id" class="item-wrapper">
-          <ion-item>
+          <ion-item :class="['item-legacy', `note-layout-${noteRowLayoutClass}`, { 'has-note': !!item.note }]">
             <ion-label class="item-label">
               <span class="item-name">{{ item.name }}</span>
-              <span v-if="item.note" class="item-note"> • {{ item.note }}</span>
+              <span v-if="item.note" class="item-note">{{ item.note }}</span>
             </ion-label>
             <ion-checkbox 
               slot="end" 
@@ -47,12 +47,13 @@
         <ion-item
           v-for="entry in historyItems"
           :key="entry.entryId"
-          class="history-row"
+          class="history-row item-legacy"
+          :class="[`note-layout-${noteRowLayoutClass}`, { 'has-note': !!entry.itemSnapshot.note }]"
           @click="handleUndoHistory(entry)"
         >
           <ion-label class="history-item-label">
             <span class="item-name">{{ entry.itemSnapshot.name }}</span>
-            <span v-if="entry.itemSnapshot.note" class="item-note"> • {{ entry.itemSnapshot.note }}</span>
+            <span v-if="entry.itemSnapshot.note" class="item-note">{{ entry.itemSnapshot.note }}</span>
           </ion-label>
         </ion-item>
       </ion-list>
@@ -80,7 +81,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, inject, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { IonPage, IonTitle, IonContent, IonList, IonListHeader, IonItem, IonIcon, IonLabel, IonCheckbox, IonButton } from '@ionic/vue';
+import { IonPage, IonTitle, IonContent, IonList, IonListHeader, IonItem, IonLabel, IonCheckbox, IonButton } from '@ionic/vue';
 import { useItemsList, type ShoppingListItem, type OneTimeItem } from '@/composables/items';
 import ShoppingListItemComponent from '@/components/ShoppingListItem.vue';
 import AddOneTimeItemModal from '@/components/AddOneTimeItemModal.vue';
@@ -88,7 +89,7 @@ import { useSettings } from '@/composables/settings';
 import { useHistory, type HistoryEntry, type RegularItemSnapshot, type OneTimeItemSnapshot } from '@/composables/history';
 
 const route = useRoute();
-const { historyEnabled } = useSettings();
+const { historyEnabled, noteRowLayoutClass } = useSettings();
 
 // During dev hot-reload / full reloads, the Teleport target (`ion-app`) can be torn down
 // before this component unmount cleanup runs. Guarding the Teleport with a real element
@@ -354,28 +355,13 @@ const handleUndoHistory = async (entry: HistoryEntry) => {
 .shopping-list-page ion-checkbox {
   --size: 32px;
   --checkbox-background-checked: #ff6b47;
+  flex-shrink: 0;
+  margin-inline-end: 16px;
 }
 
 .shopping-list-page ion-checkbox::part(container) {
   border-radius: 6px;
   border: 2px solid #ff6b47;
-}
-
-.item-label {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
-}
-
-.item-name {
-  font-weight: 500;
-}
-
-.item-note {
-  color: var(--ion-color-medium);
-  font-size: 0.9em;
-  margin-left: 4px;
 }
 
 .shopping-list-page {

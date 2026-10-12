@@ -8,6 +8,7 @@ interface Settings {
     customSortEnabled: boolean;
     alphabeticalSortEnabled: boolean;
     historyEnabled: boolean;
+    wrapNameAndNote?: boolean;
 }
 
 // Sorting state - mutually exclusive
@@ -16,6 +17,10 @@ const alphabeticalSortEnabled = ref(false);
 
 // History state
 const historyEnabled = ref(false);
+
+// When off, name and note sit on two ellipsized lines. When on, both wrap.
+const wrapNameAndNote = ref(false);
+const noteRowLayoutClass = computed(() => (wrapNameAndNote.value ? 'wrap' : 'stack'));
 
 // Creation order sort is computed: it's ON when the other two are OFF
 const creationOrderSortEnabled = computed(() => {
@@ -39,6 +44,9 @@ const loadSettings = async () => {
         if (settings.historyEnabled !== undefined) {
             historyEnabled.value = settings.historyEnabled;
         }
+        if (typeof settings.wrapNameAndNote === 'boolean') {
+            wrapNameAndNote.value = settings.wrapNameAndNote;
+        }
     } catch {
         // File doesn't exist yet; use defaults
     }
@@ -51,6 +59,7 @@ const saveSettings = async () => {
             customSortEnabled: customSortEnabled.value,
             alphabeticalSortEnabled: alphabeticalSortEnabled.value,
             historyEnabled: historyEnabled.value,
+            wrapNameAndNote: wrapNameAndNote.value,
         }),
         directory: Directory.Data,
         encoding: Encoding.UTF16,
@@ -58,7 +67,7 @@ const saveSettings = async () => {
 };
 
 // Watch for changes and auto-save
-watch([customSortEnabled, alphabeticalSortEnabled, historyEnabled], saveSettings);
+watch([customSortEnabled, alphabeticalSortEnabled, historyEnabled, wrapNameAndNote], saveSettings);
 
 // When history is disabled, clear persisted history as well.
 watch(historyEnabled, async (enabled) => {
@@ -92,14 +101,21 @@ export function useSettings() {
         historyEnabled.value = isChecked;
     }
 
+    function handleWrapNameAndNoteChange(isChecked: boolean) {
+        wrapNameAndNote.value = isChecked;
+    }
+
     return {
         customSortEnabled,
         alphabeticalSortEnabled,
         creationOrderSortEnabled,
         historyEnabled,
+        wrapNameAndNote,
+        noteRowLayoutClass,
         handleCustomSortingChange,
         handleAlphabeticalSortChange,
         handleHistoryChange,
+        handleWrapNameAndNoteChange,
         loadSettings,
     };
 }

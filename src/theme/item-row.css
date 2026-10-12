@@ -1,0 +1,91 @@
+/* Shared name/note row layout for ion-item (Items tab, Shopping list, history).
+   Rows must keep Ionic's `item-legacy` class so .item-inner does not wrap
+   (Ionic 7 default is flex-wrap: wrap, which drops the end-slot checkbox). */
+
+ion-item.note-layout-stack::part(native),
+ion-item.note-layout-wrap::part(native) {
+  min-width: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+ion-item.note-layout-stack::part(native) {
+  overflow: hidden;
+}
+
+ion-item.note-layout-wrap::part(native) {
+  overflow: visible;
+}
+
+ion-label.item-label,
+ion-label.history-item-label {
+  display: flex;
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.note-layout-stack .item-label,
+.note-layout-stack .history-item-label,
+.note-layout-wrap .item-label,
+.note-layout-wrap .history-item-label {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 2px;
+}
+
+.item-name,
+.item-note {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.note-layout-stack .item-name,
+.note-layout-stack .item-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-layout-wrap .item-label,
+.note-layout-wrap .history-item-label {
+  overflow: visible;
+  white-space: normal;
+}
+
+.note-layout-wrap .item-name,
+.note-layout-wrap .item-note {
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.item-name {
+  font-weight: 500;
+}
+
+.item-note {
+  color: var(--ion-color-medium);
+  font-size: 0.9em;
+}
+
+/* Match two-line (name + note) row height even when there is no note. */
+ion-item.item-legacy.note-layout-stack {
+  --min-height: 68px;
+}
+
+ion-item.note-layout-wrap {
+  --min-height: 56px;
+  align-items: center;
+}
+
+ion-item.note-layout-stack ion-checkbox,
+ion-item.note-layout-wrap ion-checkbox {
+  flex-shrink: 0;
+  align-self: center;
+  /* Item inner end padding is 0 so separators stay full-width; keep Ionic's usual inset on the control. */
+  margin-inline-end: 16px;
+}

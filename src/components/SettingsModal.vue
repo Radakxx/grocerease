@@ -50,6 +50,17 @@
                 </ion-item>
 
                 <ion-list-header>
+                    <ion-label class="section-header">Wrapping</ion-label>
+                </ion-list-header>
+                <ion-item>
+                    <ion-label class="ion-text-wrap">Wrap name and note indefinitely</ion-label>
+                    <ion-toggle
+                        :checked="wrapNameAndNote"
+                        @ionChange="(event) => handleWrapNameAndNoteChange(event.detail.checked)"
+                    ></ion-toggle>
+                </ion-item>
+
+                <ion-list-header>
                     <ion-label class="section-header">Import/Export</ion-label>
                 </ion-list-header>
                 <!-- Disabled until CSV import is implemented; re-enable when ready -->
@@ -115,9 +126,11 @@ const {
     alphabeticalSortEnabled,
     creationOrderSortEnabled,
     historyEnabled,
+    wrapNameAndNote,
     handleCustomSortingChange,
     handleAlphabeticalSortChange,
     handleHistoryChange,
+    handleWrapNameAndNoteChange,
 } = useSettings();
 
 // Shared shopping list state (regular + one-time items)
