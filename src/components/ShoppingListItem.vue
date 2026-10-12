@@ -2,7 +2,11 @@
   <!-- Render if item is checked OR has checked descendants -->
   <template v-if="item.checked || hasCheckedChildren">
     <!-- Only show the item itself if it's checked -->
-    <ion-item v-if="item.checked" :style="{ paddingLeft: `${depth * 20}px` }">
+    <ion-item
+      v-if="item.checked"
+      :class="['item-legacy', `note-layout-${noteRowLayoutClass}`, { 'has-note': !!item.note }]"
+      :style="{ paddingLeft: `${depth * 20}px` }"
+    >
       <ion-button 
         slot="start"
         class="expand-arrow-button"
@@ -18,7 +22,7 @@
       </ion-button>
       <ion-label class="item-label">
         <span class="item-name">{{ item.name }}</span>
-        <span v-if="item.note" class="item-note"> • {{ item.note }}</span>
+        <span v-if="item.note" class="item-note">{{ item.note }}</span>
       </ion-label>
       <ion-checkbox 
         slot="end" 
@@ -29,7 +33,11 @@
     </ion-item>
     
     <!-- Show parent container (without checkbox) if parent is not checked but has checked children -->
-    <ion-item v-else-if="hasCheckedChildren" :style="{ paddingLeft: `${depth * 20}px` }">
+    <ion-item
+      v-else-if="hasCheckedChildren"
+      :class="['item-legacy', `note-layout-${noteRowLayoutClass}`]"
+      :style="{ paddingLeft: `${depth * 20}px` }"
+    >
       <ion-button 
         slot="start"
         class="expand-arrow-button"
@@ -73,6 +81,9 @@ import {
 } from '@ionic/vue';
 import { chevronDown, chevronForward } from 'ionicons/icons';
 import type { ShoppingListItem } from '@/composables/items';
+import { useSettings } from '@/composables/settings';
+
+const { noteRowLayoutClass } = useSettings();
 
 const props = defineProps<{
   item: ShoppingListItem;
@@ -115,23 +126,6 @@ ion-item {
 .expand-arrow-button {
   -webkit-margin-end: 6px;
   margin-inline-end: 6px;
-}
-
-.item-label {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
-}
-
-.item-name {
-  font-weight: 500;
-}
-
-.item-note {
-  color: var(--ion-color-medium);
-  font-size: 0.9em;
-  margin-left: 4px;
 }
 
 .icon-placeholder {

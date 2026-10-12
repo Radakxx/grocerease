@@ -33,7 +33,7 @@
                 </ion-button>
             </ion-buttons>
         </ion-toolbar>
-        <ion-toolbar v-else>
+        <ion-toolbar v-else class="shopping-header-toolbar">
             <ion-title size="large">{{ pageTitle }}</ion-title>
             <ion-buttons slot="end">
                 <ion-button @click="openSettings()">
@@ -89,6 +89,11 @@ function clearSearch() {
 </script>
 
 <style scoped>
+.shopping-header-toolbar {
+    /* Match Items so the settings icon lines up with list checkboxes. */
+    --padding-end: 4px;
+}
+
 .items-header-toolbar {
     --padding-start: 8px;
     --padding-end: 4px;

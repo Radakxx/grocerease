@@ -16,7 +16,7 @@ This document describes **implemented** behavior: what the app does today, as re
 
 - **Default route:** `/` redirects to **`/tabs/tab2`** (Shopping list).
 - **Tabs:** Two tabs — **Items** (`/tabs/tab1`) and **Shopping list** (`/tabs/tab2`).
-- **Header:** Title reflects the active tab (“Items” or “Shopping list”); a **settings** control opens Settings on both tabs.
+- **Header:** Title reflects the active tab (“Items” or “Shopping list”); a **settings** control opens Settings on both tabs. The settings icon uses the same end inset on both tabs so it lines up with list checkboxes.
 - **Items tab header:** Includes a **search** field (native `input type="search"`), a **clear** control when the query is non-empty, and settings. Search uses shared state so the list and header stay in sync.
 - **Floating add button:** A centered FAB above the tab bar invokes a **tab-specific** action: **Add item** on Items, **Add one-time item** on Shopping list. Styling differs per tab (green vs orange).
 
@@ -32,6 +32,10 @@ This document describes **implemented** behavior: what the app does today, as re
 ### Viewing and expanding
 
 - Rows are **indented by depth** (20px per level).
+- **Row text:** Name on the first line, optional note on the second. Settings **Wrap name and note indefinitely** controls overflow:
+  - **Off (default):** Each line **ellipsizes** if it is too long. Every row uses the **same height** as a name+note row; if there is no note, the name is **vertically centered**.
+  - **On:** Name and note **wrap** onto as many lines as needed (long tokens break). The row grows with the text.
+  In both modes the checkbox stays **vertically centered** in the **end** slot and does not wrap or leave the row. Full text is available by editing the item (Items tab). Tapping a Shopping list row completes/removes the item; it does not open the note.
 - **Expand/collapse** applies to nodes with children. During **search**, matching branches stay visible; ancestors of matches are included; the filter drives which children appear. While search is active, expand **caret interaction is disabled** (subtrees follow the filter).
 
 ### Adding and editing items
@@ -70,8 +74,8 @@ Three **mutually exclusive** modes:
 
 ### What appears on the list
 
-- **One-time items** (see below) render **first**, then **regular** items from the master tree.
-- **Regular items:** The tab shows the subtree of items that are **checked** in the master catalog. A parent may appear as a **header row** (no checkbox) if it is not checked but has checked descendants; fully checked nodes show a row with name, optional note, and the completion control.
+- **One-time items** (see below) render **first**, then **regular** items from the master tree. One-time and **history** rows use the same **Wrapping** layout as the Items tab.
+- **Regular items:** The tab shows the subtree of items that are **checked** in the master catalog. A parent may appear as a **header row** (no checkbox) if it is not checked but has checked descendants; fully checked nodes show a row with name, optional note, and the completion control. Name/note layout matches the **Wrapping** setting. The completion checkbox stays in the **end** slot.
 - **Checkbox semantics (Shopping list):** The control is **inverted** visually: an item still “on the list” shows an **unchecked** box; marking it **checked** means **done** — the app **unchecks** the master item, **clears its note**, and (with history) records an undo snapshot first.
 
 ### One-time items
@@ -105,6 +109,7 @@ Three **mutually exclusive** modes:
 
 - **Sorting:** Toggles for **custom sorting**, **alphabetical sort**, and a **read-only** indicator for **creation order (default)** — the latter reflects “both others off.”
 - **History:** Toggle as above.
+- **Wrapping:** Toggle **Wrap name and note indefinitely**. Persisted in `settings.json` as `wrapNameAndNote` (boolean, default **false**).
 - **Import CSV:** Button present but **disabled**; not implemented (commented as future).
 - **Share shopping list:** Builds a text representation: one-time lines first (`name` + optional note), then checked regular items in tree order with **two spaces per depth** for indentation; lines joined with `,\n`. Copies to the **clipboard** when available and shows a short **toast**; if nothing is on the list, share does nothing useful (console log).
 - **Info:** Static marketing text and copyright line.
@@ -115,7 +120,7 @@ Three **mutually exclusive** modes:
 
 - **Startup (`App.vue`):** Registers the Android-style **back** handler to **exit the app**; loads **settings** from disk.
 - **Items / one-time:** Loaded when components using `useItemsList` mount; **deep watch** saves the main list and one-time list on changes.
-- **Settings:** Saved when any of the three toggles changes.
+- **Settings:** Saved when sorting, history, or **Wrapping** changes.
 - **History:** Loaded when `useHistory` mounts; saved on add, flush, or remove.
 
 ---

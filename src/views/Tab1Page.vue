@@ -433,6 +433,8 @@ const handleItemReorder = (event: { item: ShoppingListItem; fromIndex: number; t
 ion-checkbox {
   --size: 32px;
   --checkbox-background-checked: #87d361;
+  flex-shrink: 0;
+  margin-inline-end: 16px;
 }
 
 ion-checkbox::part(container) {
@@ -440,20 +442,4 @@ ion-checkbox::part(container) {
   border: 2px solid #87d361;
 }
 
-.item-label {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
-}
-
-.item-name {
-  font-weight: 500;
-}
-
-.item-note {
-  color: var(--ion-color-medium);
-  font-size: 0.9em;
-  margin-left: 4px;
-}
 </style>
