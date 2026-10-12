@@ -107,6 +107,7 @@ Three **mutually exclusive** modes:
 
 ## Settings modal
 
+- **Section help:** Each section title (Sorting, History, Wrapping, Import/Export, Info) has a **question-mark** control. On a mouse it shows a short explanation on **hover**; on Android (and other touch) it shows on **tap**.
 - **Sorting:** Toggles for **custom sorting**, **alphabetical sort**, and a **read-only** indicator for **creation order (default)** — the latter reflects “both others off.”
 - **History:** Toggle as above.
 - **Wrapping:** Toggle **Wrap name and note indefinitely**. Persisted in `settings.json` as `wrapNameAndNote` (boolean, default **false**).

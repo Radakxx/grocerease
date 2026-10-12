@@ -11,7 +11,13 @@
         <ion-content class="ion-padding settings-modal-content">
             <ion-list>
                 <ion-list-header>
-                    <ion-label class="section-header">Sorting</ion-label>
+                    <ion-label class="section-header">
+                        <span>Sorting</span>
+                        <SettingsSectionHelp
+                            label="About Sorting"
+                            text="Choose how the Items list is ordered: drag to rearrange, A to Z, or the order items were added. Only one mode is on at a time."
+                        />
+                    </ion-label>
                 </ion-list-header>
                 <ion-item>
                     <ion-label>Enable custom sorting</ion-label>
@@ -38,7 +44,13 @@
                 </ion-item>
 
                 <ion-list-header>
-                    <ion-label class="section-header">History</ion-label>
+                    <ion-label class="section-header">
+                        <span>History</span>
+                        <SettingsSectionHelp
+                            label="About History"
+                            text="When on, completed shopping list items are saved so you can undo them. Turning this off clears that history."
+                        />
+                    </ion-label>
                 </ion-list-header>
                 <!-- Disabled until history feature is implemented; re-enable when ready -->
                 <ion-item>
@@ -50,7 +62,13 @@
                 </ion-item>
 
                 <ion-list-header>
-                    <ion-label class="section-header">Wrapping</ion-label>
+                    <ion-label class="section-header">
+                        <span>Wrapping</span>
+                        <SettingsSectionHelp
+                            label="About Wrapping"
+                            text="When on, long names and notes use as many lines as they need. When off, each stays on one line and shortens with an ellipsis."
+                        />
+                    </ion-label>
                 </ion-list-header>
                 <ion-item>
                     <ion-label class="ion-text-wrap">Wrap name and note indefinitely</ion-label>
@@ -61,7 +79,13 @@
                 </ion-item>
 
                 <ion-list-header>
-                    <ion-label class="section-header">Import/Export</ion-label>
+                    <ion-label class="section-header">
+                        <span>Import/Export</span>
+                        <SettingsSectionHelp
+                            label="About Import and Export"
+                            text="Share copies the current shopping list to the clipboard. CSV import is not available yet."
+                        />
+                    </ion-label>
                 </ion-list-header>
                 <!-- Disabled until CSV import is implemented; re-enable when ready -->
                 <ion-item>
@@ -116,6 +140,7 @@ import {
 import { ref } from 'vue';
 import { useSettings } from '@/composables/settings';
 import { useItemsList, type ShoppingListItem } from '@/composables/items';
+import SettingsSectionHelp from '@/components/SettingsSectionHelp.vue';
 
 const settingsModal = ref<InstanceType<typeof IonModal>>();
 const toastOpen = ref(false);
@@ -210,7 +235,10 @@ defineExpose({
 
 <style scoped>
 .section-header {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
     width: 100%;
     font-weight: 500;
     color: var(--ion-color-dark);
@@ -225,7 +253,8 @@ defineExpose({
 }
 
 .settings-modal-content ion-list ion-item {
-    --inner-padding-end: 0;
+    /* Same 16px as --padding-start; do not also set --padding-end or the gutter doubles. */
+    --inner-padding-end: 16px;
     --padding-end: 0;
     --border-width: 0;
     position: relative;
