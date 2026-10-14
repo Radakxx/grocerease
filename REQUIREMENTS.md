@@ -23,7 +23,7 @@ This document describes **implemented** behavior: what the app does today, as re
 
 ---
 
-## Items tab (master catalog)
+## Items tab
 
 ### Data model
 
@@ -76,7 +76,7 @@ Three **mutually exclusive** modes:
 ### What appears on the list
 
 - **One-time items** (see below) render **first**, then **regular** items from the master tree. One-time and **history** rows use the same **Wrapping** layout as the Items tab.
-- **Regular items:** The tab shows the subtree of items that are **checked** in the master catalog. A parent may appear as a **header row** (no checkbox) if it is not checked but has checked descendants; fully checked nodes show a row with name, optional note, and the completion control. Name/note layout matches the **Wrapping** setting. The completion checkbox stays in the **end** slot.
+- **Regular items:** The tab shows the subtree of items that are **checked** on the Items tab. A parent may appear as a **header row** (no checkbox) if it is not checked but has checked descendants; fully checked nodes show a row with name, optional note, and the completion control. Name/note layout matches the **Wrapping** setting. The completion checkbox stays in the **end** slot.
 - **Checkbox semantics (Shopping list):** The control is **inverted** visually: an item still “on the list” shows an **unchecked** box; marking it **checked** means **done** — the app **unchecks** the master item, **clears its note**, and (with history) records an undo snapshot first.
 
 ### One-time items
@@ -108,12 +108,15 @@ Three **mutually exclusive** modes:
 
 ## Settings modal
 
-- **Section help:** Each section title (Sorting, History, Wrapping, Import/Export, Info) has a **question-mark** control. On a mouse it shows a short explanation on **hover**; on Android (and other touch) it shows on **tap**.
+- **Section help:** Each section title (Sorting, History, Wrapping, Share, Import/Export, Info) has a **question-mark** control. On a mouse it shows a short explanation on **hover**; on Android (and other touch) it shows on **tap**.
 - **Sorting:** Toggles for **custom sorting**, **alphabetical sort**, and a **read-only** indicator for **creation order (default)** — the latter reflects “both others off.”
 - **History:** Toggle as above.
 - **Wrapping:** Toggle **Wrap name and note indefinitely**. Persisted in `settings.json` as `wrapNameAndNote` (boolean, default **false**).
-- **Import CSV:** Button present but **disabled**; not implemented (commented as future).
-- **Share shopping list:** Builds a text representation: one-time lines first (`name` + optional note), then checked regular items in tree order with **two spaces per depth** for indentation; lines joined with `,\n`. Copies to the **clipboard** when available and shows a short **toast**; if nothing is on the list, share does nothing useful (console log).
+- **Share:** Copies the current shopping list so it can be pasted into a message. **Share shopping list** builds a text representation: one-time lines first (`name` + optional note), then checked regular items in tree order with **two spaces per depth** for indentation; lines joined with `,\n`. Copies to the **clipboard** when available and shows a short **toast**; if nothing is on the list, share does nothing useful (console log).
+- **Import/Export:** Copies the Items list to the clipboard and restores a previous export, including notes and whether each item is on the shopping list.
+  - **Export items:** Copies the Items list, then one-time items, to the clipboard. The first line is `Grocerease export 1`. Each Items list line is two spaces per depth, then `[x]` or `[ ]`, then `name || note` (the note may be empty, written as ` ||`). One-time lines add a `* ` before the checkbox and are not indented. Notes and checked state are kept. Nothing is copied when both lists are empty (console log). A toast confirms a successful copy.
+  - **Import from text:** Opens a text area for an items export. The paste is read as an **export** when the first non-empty line is `Grocerease export 1`. A preview shows how many items, nested items, and one-time items were recognized, plus warnings. Import assigns new ids and writes `checked` and `note` directly (it does not cascade checked state to descendants). An export paste restores name, note, checked state, nesting, and one-time items. A duplicate sibling name in the paste is skipped, and lines nested under that skipped name are dropped.
+  - **Existing collection:** When the Items list and the one-time items are both empty, the paste is written immediately. Otherwise Import asks to **Add** or **Replace** and writes nothing if cancelled. **Replace** clears both lists, then writes the paste. History and settings are left as they are, so old history entries do not recreate replaced items. **Add** keeps current rows and appends pasted ones. A pasted name that matches an existing sibling (case-insensitive) is skipped, and that existing item stays as it is, including its children. One-time items use the same name rule. If alphabetical sort is on, the Items list is sorted after a successful import.
 - **Info:** Static marketing text and copyright line.
 
 ---
@@ -129,8 +132,8 @@ Three **mutually exclusive** modes:
 
 ## Explicit non-features or limitations
 
-- **CSV import:** UI stub only; no import logic.
-- **Share:** Clipboard only (no native share sheet in code).
+- **Share paste:** Not an explicit feature. Import from text still accepts a Share Shopping List copy as a workaround, a soft CSV import, so an older list can be restored. The whole line becomes the name, the note stays empty, and `checked` is **false** because that text does not record checked state. One-time lines become root items on the Items tab. An indented line with no parent line is placed under the nearest included ancestor.
+- **Share and export:** Clipboard only (no native share sheet in code).
 
 ---
 
