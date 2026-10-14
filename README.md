@@ -10,6 +10,7 @@ Grocerease is an Ionic + Vue grocery list app.
 - Run unit tests: `npm run test:unit`
 - Run e2e tests: `npm run test:e2e`
 - Run linter: `npm run lint`
+- Apply app icons to web and Android: `npm run icons`
 
 ## Quick start tutorial
 
