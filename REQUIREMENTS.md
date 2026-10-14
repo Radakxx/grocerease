@@ -9,6 +9,7 @@ This document describes **implemented** behavior: what the app does today, as re
 - **Stack:** Ionic Vue (Vue 3), Vue Router, Capacitor (native filesystem and app lifecycle).
 - **Persistence:** Lists and settings are stored as JSON files under Capacitor’s app **Data** directory using UTF-16 encoding (`itemslist.json`, `onetimeitems.json`, `settings.json`, `shoppinghistory.json`).
 - **Identity:** Tree items receive a `crypto.randomUUID()` when missing, so nested structures remain addressable after load.
+- **App icon:** One overlapping orange and apple outline mark (thick stroke, charcoal stem on a light gray field) for launcher, splash, recents, and favicon. Source file is `src/assets/logo-light.png`; `npm run icons` writes the Android mipmaps and splash images.
 
 ---
 
