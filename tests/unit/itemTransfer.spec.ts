@@ -1,6 +1,7 @@
 import type { OneTimeItem, ShoppingListItem } from '@/composables/items';
 import {
   applyItemTransfer,
+  countCatalogItems,
   parseItemTransfer,
   serializeItems,
 } from '@/utils/itemTransfer';
@@ -168,5 +169,167 @@ describe('itemTransfer', () => {
     expect(applied.oneTimeItems.map((item) => item.name)).toEqual(['Eggs']);
     expect(applied.catalog[0].note).toBe('2L');
     expect(applied.catalog[0].checked).toBe(true);
+  });
+
+  it('serializes nothing when both lists are empty and omits blank names', () => {
+    expect(serializeItems([], [])).toBe('');
+    expect(serializeItems(
+      [{ id: 'blank', name: '   ', note: '', checked: false }],
+      [{ id: 'blank-once', name: '', note: 'ignored', checked: false }],
+    )).toBe('');
+
+    const text = serializeItems(
+      [
+        {
+          id: 'milk',
+          name: 'Milk',
+          note: '',
+          checked: false,
+          children: [{ id: 'blank-child', name: '  ', note: 'skip', checked: true }],
+        },
+      ],
+      [],
+    );
+    expect(text).toBe(['Grocerease export 1', '[ ] Milk ||'].join('\n'));
+  });
+
+  it('keeps each line checked state and does not cascade it to descendants', () => {
+    const parsed = parseItemTransfer([
+      'Grocerease export 1',
+      '[x] Milk ||',
+      '  [ ] Skim ||',
+    ].join('\n'));
+
+    expect(parsed.ok).toBe(true);
+    expect(parsed.catalog[0].checked).toBe(true);
+    expect(parsed.catalog[0].children?.[0].checked).toBe(false);
+  });
+
+  it('skips a case-insensitive trimmed sibling and drops lines nested under it', () => {
+    const parsed = parseItemTransfer([
+      'Grocerease export 1',
+      '[ ] Milk ||',
+      '  [ ] Skim ||',
+      '[ ]  milk  ||',
+      '  [ ] Whole ||',
+    ].join('\n'));
+
+    expect(parsed.ok).toBe(true);
+    expect(parsed.skippedDuplicates).toBe(1);
+    expect(withoutIds(parsed.catalog)).toEqual([
+      {
+        name: 'Milk',
+        note: '',
+        checked: false,
+        children: [
+          { name: 'Skim', note: '', checked: false, children: undefined },
+        ],
+      },
+    ]);
+  });
+
+  it('counts every skipped descendant when adding beside an existing sibling', () => {
+    const existing: ShoppingListItem[] = [
+      { id: 'milk', name: ' milk ', note: 'keep', checked: false },
+    ];
+    const parsed = parseItemTransfer([
+      'Grocerease export 1',
+      '[x] Milk || 2L',
+      '  [ ] Skim ||',
+      '    [ ] Organic ||',
+      '[ ] Bread ||',
+    ].join('\n'));
+
+    const applied = applyItemTransfer(existing, [], parsed, 'add');
+    expect(applied.skippedDuplicates).toBe(3);
+    expect(applied.catalog.map((item) => item.name)).toEqual([' milk ', 'Bread']);
+    expect(applied.catalog[0].note).toBe('keep');
+    expect(applied.catalog[0].children).toBeUndefined();
+  });
+
+  it('skips a duplicate one-time name and treats a nested one-time marker as a catalog item', () => {
+    const parsed = parseItemTransfer([
+      'Grocerease export 1',
+      '[ ] Dairy ||',
+      '  * [x] Eggs || dozen',
+      '* [ ] Eggs ||',
+      '* [x] eggs || dozen',
+    ].join('\n'));
+
+    expect(parsed.ok).toBe(true);
+    expect(parsed.skippedDuplicates).toBe(1);
+    expect(parsed.warnings).toContain(
+      'A one-time marker under a parent was imported as an item on the Items tab.',
+    );
+    expect(withoutIds(parsed.catalog)).toEqual([
+      {
+        name: 'Dairy',
+        note: '',
+        checked: false,
+        children: [
+          { name: 'Eggs', note: 'dozen', checked: true, children: undefined },
+        ],
+      },
+    ]);
+    expect(withoutOneTimeIds(parsed.oneTimeItems)).toEqual([
+      { name: 'Eggs', note: '', checked: false },
+    ]);
+  });
+
+  it('hangs an over-indented export line on the nearest ancestor', () => {
+    const parsed = parseItemTransfer([
+      'Grocerease export 1',
+      '[ ] Dairy ||',
+      '    [ ] Skim ||',
+    ].join('\n'));
+
+    expect(parsed.ok).toBe(true);
+    expect(parsed.missingParents).toBe(1);
+    expect(parsed.warnings.some((warning) => warning.includes('parent line was missing'))).toBe(true);
+    expect(withoutIds(parsed.catalog)).toEqual([
+      {
+        name: 'Dairy',
+        note: '',
+        checked: false,
+        children: [
+          { name: 'Skim', note: '', checked: false, children: undefined },
+        ],
+      },
+    ]);
+  });
+
+  it('skips unreadable lines and rejects a paste with no readable items', () => {
+    const parsed = parseItemTransfer([
+      'Grocerease export 1',
+      'not a line',
+      '[ ] Milk ||',
+    ].join('\n'));
+
+    expect(parsed.ok).toBe(true);
+    expect(parsed.catalog.map((item) => item.name)).toEqual(['Milk']);
+    expect(parsed.warnings).toContain('1 line did not match and was skipped.');
+
+    const empty = parseItemTransfer([
+      'Grocerease export 1',
+      'not a line',
+      'also bad',
+    ].join('\n'));
+    expect(empty.ok).toBe(false);
+    expect(empty.error).toBe('Could not read any items.');
+  });
+
+  it('counts catalog nodes the way the import preview does', () => {
+    const parsed = parseItemTransfer([
+      'Grocerease export 1',
+      '[ ] Milk ||',
+      '  [ ] Skim ||',
+      '    [ ] Organic ||',
+      '[ ] Bread ||',
+    ].join('\n'));
+
+    const total = countCatalogItems(parsed.catalog);
+    const nested = total - parsed.catalog.length;
+    expect(total).toBe(4);
+    expect(nested).toBe(2);
   });
 });

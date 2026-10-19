@@ -1,9 +1,8 @@
 <template>
-  <!-- Render if item is checked OR has checked descendants -->
-  <template v-if="item.checked || hasCheckedChildren">
-    <!-- Only show the item itself if it's checked -->
+  <!-- A checked node is a row. An unchecked node with checked descendants is a header. -->
+  <template v-if="rowKind !== 'hidden'">
     <ion-item
-      v-if="item.checked"
+      v-if="rowKind === 'row'"
       :class="['item-legacy', `note-layout-${noteRowLayoutClass}`, { 'has-note': !!item.note }]"
       :style="{ paddingLeft: `${depth * 20}px` }"
     >
@@ -32,9 +31,8 @@
       ></ion-checkbox>
     </ion-item>
     
-    <!-- Show parent container (without checkbox) if parent is not checked but has checked children -->
     <ion-item
-      v-else-if="hasCheckedChildren"
+      v-else
       :class="['item-legacy', `note-layout-${noteRowLayoutClass}`]"
       :style="{ paddingLeft: `${depth * 20}px` }"
     >
@@ -82,6 +80,7 @@ import {
 import { chevronDown, chevronForward } from 'ionicons/icons';
 import type { ShoppingListItem } from '@/composables/items';
 import { useSettings } from '@/composables/settings';
+import { hasCheckedDescendants, shoppingListRowKind } from '@/utils/shoppingList';
 
 const { noteRowLayoutClass } = useSettings();
 
@@ -96,25 +95,13 @@ const emit = defineEmits<{
 }>();
 
 const expanded = computed(() => props.item.expandedShoppingList === true);
+const rowKind = computed(() => shoppingListRowKind(props.item));
+const hasCheckedChildren = computed(() => hasCheckedDescendants(props.item));
 
 const handleCheckboxChange = (event: CustomEvent) => {
   const isChecked = event.detail.checked;
   emit('check-item', props.item, isChecked);
 };
-
-// Helper function to recursively check if any descendants are checked
-const hasCheckedDescendants = (item: ShoppingListItem): boolean => {
-  if (!item.children) return false;
-  for (const child of item.children) {
-    if (child.checked) return true;
-    if (hasCheckedDescendants(child)) return true;
-  }
-  return false;
-};
-
-const hasCheckedChildren = computed(() => {
-  return hasCheckedDescendants(props.item);
-});
 </script>
 
 <style scoped>

@@ -41,7 +41,6 @@ import AddItemModal from '@/components/AddItemModal.vue';
 import HierarchicalItem from '@/components/HierarchicalItem.vue';
 import {
   IonPage,
-  IonIcon,
   IonContent,
   IonList,
   IonReorderGroup,
@@ -52,6 +51,7 @@ import { useItemsList, type ShoppingListItem } from '@/composables/items';
 import { useSettings } from '@/composables/settings';
 import { useItemsTabSearch } from '@/composables/itemsTabSearch';
 import { buildItemsSearchFilteredView } from '@/composables/itemsSearchFilter';
+import { moveItemWithinSiblings } from '@/utils/shoppingList';
 
 const { 
   addItem, 
@@ -364,38 +364,16 @@ const handleItemCheck = (item: ShoppingListItem, checked: boolean) => {
 
 // Handle reordering of root items
 const handleRootItemReorder = (event: CustomEvent) => {
-  const fromIndex = event.detail.from;
-  const toIndex = event.detail.to;
-  
-  // Validate indices are within bounds for root items
-  if (fromIndex >= 0 && fromIndex < items.value.length && 
-      toIndex >= 0 && toIndex < items.value.length) {
-    // Move item (and all its children) in the array
-    // Since children are part of the item object, they move automatically
-    const item = items.value.splice(fromIndex, 1)[0];
-    items.value.splice(toIndex, 0, item);
-  }
-  
-  // Complete the reorder - Ionic will handle the visual animation
+  moveItemWithinSiblings(items.value, event.detail.from, event.detail.to);
   event.detail.complete();
 };
 
 
 // Handle reordering of nested items (children) - emitted from HierarchicalItem
 const handleItemReorder = (event: { item: ShoppingListItem; fromIndex: number; toIndex: number; parent: ShoppingListItem | null }) => {
-  const { fromIndex, toIndex, parent } = event;
-  
-  if (parent && parent.children) {
-    // Validate indices
-    if (fromIndex >= 0 && fromIndex < parent.children.length &&
-        toIndex >= 0 && toIndex < parent.children.length) {
-      // Move the item (and all its children) in the parent's children array
-      // Since children are part of the item object, they move automatically
-      const child = parent.children.splice(fromIndex, 1)[0];
-      parent.children.splice(toIndex, 0, child);
-    }
+  if (event.parent?.children) {
+    moveItemWithinSiblings(event.parent.children, event.fromIndex, event.toIndex);
   }
-  // Don't restore expansion for nested reordering - items weren't collapsed
 };
 
 </script>
