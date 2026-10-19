@@ -179,7 +179,8 @@ import {
 } from '@ionic/vue';
 import { computed, ref } from 'vue';
 import { useSettings } from '@/composables/settings';
-import { useItemsList, type ShoppingListItem } from '@/composables/items';
+import { useItemsList } from '@/composables/items';
+import { collectShoppingListLabels } from '@/utils/shoppingList';
 import SettingsSectionHelp from '@/components/SettingsSectionHelp.vue';
 import {
     applyItemTransfer,
@@ -255,36 +256,8 @@ function closeImportModal() {
     importModal.value?.$el.dismiss();
 }
 
-function collectShoppingListLabels(): string[] {
-    const labels: string[] = [];
-
-    // One-time items shown at the top of the Shopping List tab
-    for (const item of oneTimeItems.value) {
-        const label = item.note ? `${item.name} ${item.note}` : item.name;
-        labels.push(label);
-    }
-
-    // Regular items: include all checked items in the tree, with indentation by depth
-    const walk = (list: ShoppingListItem[], depth: number) => {
-        for (const item of list) {
-            if (item.checked) {
-                const label = item.note ? `${item.name} ${item.note}` : item.name;
-                const indent = '  '.repeat(depth);
-                labels.push(`${indent}${label}`);
-            }
-            if (item.children && item.children.length > 0) {
-                walk(item.children, depth + 1);
-            }
-        }
-    };
-
-    walk(items.value, 0);
-
-    return labels;
-}
-
 async function handleShareShoppingList() {
-    const labels = collectShoppingListLabels();
+    const labels = collectShoppingListLabels(oneTimeItems.value, items.value);
 
     if (!labels.length) {
         console.log('No shopping list items to copy.');

@@ -87,6 +87,13 @@ import ShoppingListItemComponent from '@/components/ShoppingListItem.vue';
 import AddOneTimeItemModal from '@/components/AddOneTimeItemModal.vue';
 import { useSettings } from '@/composables/settings';
 import { useHistory, type HistoryEntry, type RegularItemSnapshot, type OneTimeItemSnapshot } from '@/composables/history';
+import {
+  expandNewlyChecked,
+  finishOneTimeItem,
+  finishRegularItem,
+  restoreOneTimeFromSnapshot,
+  restoreRegularFromHistory,
+} from '@/utils/shoppingList';
 
 const route = useRoute();
 const { historyEnabled, noteRowLayoutClass } = useSettings();
@@ -135,30 +142,8 @@ const checkedItemsCount = computed(() => {
   return countChecked(items.value);
 });
 
-// Helper to recursively expand an item and all its descendants
-const expandItemAndDescendants = (item: ShoppingListItem) => {
-  item.expandedShoppingList = true;
-  if (item.children) {
-    for (const child of item.children) {
-      expandItemAndDescendants(child);
-    }
-  }
-};
-
 // Track which items were checked in the previous watch cycle
 const previouslyCheckedItems = ref<Set<ShoppingListItem>>(new Set());
-
-// Helper to recursively collect all checked items
-const collectCheckedItems = (itemList: ShoppingListItem[], checkedSet: Set<ShoppingListItem>) => {
-  for (const item of itemList) {
-    if (item.checked) {
-      checkedSet.add(item);
-    }
-    if (item.children) {
-      collectCheckedItems(item.children, checkedSet);
-    }
-  }
-};
 
 onMounted(() => {
   teleportTarget.value = document.querySelector('ion-app');
@@ -173,20 +158,7 @@ onUnmounted(() => {
 watch(
   () => items.value,
   () => {
-    // Collect all currently checked items
-    const currentlyCheckedItems = new Set<ShoppingListItem>();
-    collectCheckedItems(items.value, currentlyCheckedItems);
-    
-    // Find items that are now checked but weren't before
-    for (const item of currentlyCheckedItems) {
-      if (!previouslyCheckedItems.value.has(item)) {
-        // Item just became checked - expand it and all descendants
-        expandItemAndDescendants(item);
-      }
-    }
-    
-    // Update the previously checked items set
-    previouslyCheckedItems.value = currentlyCheckedItems;
+    previouslyCheckedItems.value = expandNewlyChecked(items.value, previouslyCheckedItems.value);
   },
   { deep: true, immediate: false }
 );
@@ -196,17 +168,7 @@ const toggleExpand = (item: ShoppingListItem) => {
 };
 
 const handleItemCheck = async (item: ShoppingListItem, checked: boolean) => {
-  // When user checks the box in shopping list (checked = true), mark item as done.
-  // This means: uncheck it (remove from shopping list) and clear the note.
-  if (!checked) return;
-
-  if (historyEnabled.value) {
-    // Capture snapshot before mutating item state.
-    await addToHistoryFromRegular(item);
-  }
-
-  item.checked = false;
-  item.note = '';
+  await finishRegularItem(item, checked, historyEnabled.value, addToHistoryFromRegular);
 };
 
 const openOneTimeItemModal = () => {
@@ -218,74 +180,36 @@ const handleOneTimeItemAdded = async (name: string, note: string) => {
 };
 
 const handleOneTimeItemCheck = async (item: OneTimeItem, index: number, event: CustomEvent) => {
-  const isChecked = event.detail.checked;
-  if (isChecked) {
-    if (historyEnabled.value) {
-      await addToHistoryFromOneTime(item);
-    }
-    await removeOneTimeItem(index);
-  }
+  await finishOneTimeItem(
+    item,
+    index,
+    event.detail.checked,
+    historyEnabled.value,
+    addToHistoryFromOneTime,
+    removeOneTimeItem,
+  );
 };
 
 const handleFlushHistory = async () => {
   await flushHistory();
 };
 
-const findRegularItemById = (list: ShoppingListItem[], id: string): ShoppingListItem | null => {
-  for (const item of list) {
-    if (item.id === id) return item;
-    if (item.children) {
-      const found = findRegularItemById(item.children, id);
-      if (found) return found;
-    }
-  }
-  return null;
-};
-
-const applyRegularSnapshotToActive = (
-  activeNode: ShoppingListItem,
-  snapshotNode: RegularItemSnapshot
-) => {
-  // Restore only checked state from history; keep active name/note (user may have edited or replaced the row).
-  // We don't re-create nodes; if a child was deleted, we just skip it.
-  activeNode.checked = snapshotNode.checked;
-
-  if (!snapshotNode.children) return;
-  if (!activeNode.children) return;
-
-  for (const snapChild of snapshotNode.children) {
-    const activeChild = activeNode.children.find((c) => c.id === snapChild.id);
-    if (activeChild) {
-      applyRegularSnapshotToActive(activeChild, snapChild);
-    }
-  }
-};
-
 const handleUndoHistory = async (entry: HistoryEntry) => {
   if (!historyEnabled.value) return;
 
   if (entry.type === 'regular') {
-    const snapshot = entry.itemSnapshot as RegularItemSnapshot;
-    const activeRoot = findRegularItemById(items.value, entry.sourceItemId);
-    if (!activeRoot) {
-      // No re-create for deleted sources.
-      return;
-    }
+    const restored = restoreRegularFromHistory(
+      items.value,
+      entry.sourceItemId,
+      entry.itemSnapshot as RegularItemSnapshot,
+    );
+    if (!restored) return;
 
-    applyRegularSnapshotToActive(activeRoot, snapshot);
     await removeHistoryEntry(entry.entryId);
     return;
   }
 
-  // One-time: restore into active one-time list (these were removed on tick-off).
-  const snapshot = entry.itemSnapshot as OneTimeItemSnapshot;
-  oneTimeItems.value.unshift({
-    id: snapshot.id,
-    name: snapshot.name,
-    note: snapshot.note,
-    checked: snapshot.checked,
-  });
-
+  restoreOneTimeFromSnapshot(oneTimeItems.value, entry.itemSnapshot as OneTimeItemSnapshot);
   await removeHistoryEntry(entry.entryId);
 };
 
