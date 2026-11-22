@@ -1,4 +1,4 @@
-package io.ionic.starter;
+package com.radakxx.grocerease;
 
 import com.getcapacitor.BridgeActivity;
 
