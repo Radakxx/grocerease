@@ -1,19 +1,16 @@
 <template>
-  <ion-page class="items-page">
+    <ion-page class="items-page">
     <ion-content :fullscreen="true">
       <AddNoteModal ref="addNoteModal" :title="noteModalTitle" @note-confirmed="handleNoteConfirmed" />
       <AddItemModal ref="addItemModal" :title="itemModalTitle" :possible-parents="possibleParents" :current-item="editedItem"
         @item-confirmed="handleItemConfirmed" />
 
       <ion-list ref="ionListRef" lines="full">
-        <ion-reorder-group
-          :disabled="!customSortEnabled || hasExpandedRootItems || itemsSearchActive"
-          @ionItemReorder="handleRootItemReorder"
-        >
           <HierarchicalItem
             v-for="(item, index) in itemsDisplay.roots"
             :key="item.id"
             :item="item"
+            :parent-item="null"
             :path="String(index)"
             :depth="0"
             :is-parent-reorder-disabled="hasExpandedRootItems"
@@ -28,7 +25,6 @@
             @swipe="handleSwipe"
             @item-reorder="handleItemReorder"
           />
-        </ion-reorder-group>
       </ion-list>
     </ion-content>
 
@@ -43,7 +39,6 @@ import {
   IonPage,
   IonContent,
   IonList,
-  IonReorderGroup,
   alertController,
 } from '@ionic/vue';
 import { ref, onMounted, onUnmounted, computed, watch, inject } from 'vue';
@@ -362,18 +357,10 @@ const handleItemCheck = (item: ShoppingListItem, checked: boolean) => {
   }
 };
 
-// Handle reordering of root items
-const handleRootItemReorder = (event: CustomEvent) => {
-  moveItemWithinSiblings(items.value, event.detail.from, event.detail.to);
-  event.detail.complete();
-};
-
-
-// Handle reordering of nested items (children) - emitted from HierarchicalItem
 const handleItemReorder = (event: { item: ShoppingListItem; fromIndex: number; toIndex: number; parent: ShoppingListItem | null }) => {
-  if (event.parent?.children) {
-    moveItemWithinSiblings(event.parent.children, event.fromIndex, event.toIndex);
-  }
+  const list = event.parent ? event.parent.children : items.value;
+  if (!list) return;
+  moveItemWithinSiblings(list, event.fromIndex, event.toIndex);
 };
 
 </script>
@@ -389,13 +376,11 @@ const handleItemReorder = (event: { item: ShoppingListItem; fromIndex: number; t
   overflow: visible;
 }
 
-/* Ensure ion-item-sliding doesn't clip the separator line */
 .items-page ion-list ion-item-sliding {
   overflow: visible;
   position: relative;
 }
 
-/* Full-width separator line that extends to screen edge - positioned on ion-item-sliding to account for layout changes */
 .items-page ion-list ion-item-sliding::after {
   content: '';
   position: absolute;
