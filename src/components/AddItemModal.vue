@@ -1,5 +1,6 @@
 <template>
-    <ion-modal ref="addItemModal" @ionModalDidPresent="focusNameInput">
+    <ion-modal class="edit-item-modal" ref="addItemModal" @ionModalDidPresent="onModalPresented" @ionModalWillDismiss="onModalWillDismiss">
+        <div class="edit-item-shell">
         <ion-header>
             <ion-toolbar>
                 <ion-buttons slot="start">
@@ -11,12 +12,12 @@
                 </ion-buttons>
             </ion-toolbar>
         </ion-header>
-        <ion-content class="ion-padding">
-            <ion-item>
+        <div class="edit-item-form">
+            <ion-item class="item-legacy">
                 <ion-input label="Item name" label-placement="stacked" ref="input" type="text"
                     v-model="addItemModalText"></ion-input>
             </ion-item>
-            <ion-item v-if="currentItem">
+            <ion-item v-if="currentItem" class="item-legacy">
                 <ion-input 
                     label="Note" 
                     label-placement="stacked"
@@ -25,7 +26,7 @@
                     type="text"
                 ></ion-input>
             </ion-item>
-            <ion-item v-if="currentItem" class="checkbox-item">
+            <ion-item v-if="currentItem" class="item-legacy checkbox-item">
                 <ion-label position="stacked">Checked</ion-label>
                 <ion-checkbox 
                     slot="end"
@@ -34,7 +35,7 @@
                     @ionChange="handleCheckboxChange"
                 ></ion-checkbox>
             </ion-item>
-            <ion-item>
+            <ion-item class="item-legacy">
                 <ion-select 
                     label="Parent (optional)" 
                     label-placement="stacked"
@@ -51,7 +52,7 @@
             
             <!-- Add new child when editing -->
             <div v-if="currentItem" class="add-child-section">
-                <ion-item>
+                <ion-item class="item-legacy">
                     <ion-input 
                         label="Add sub-item" 
                         label-placement="stacked" 
@@ -64,20 +65,22 @@
                     </ion-button>
                 </ion-item>
             </div>
-            
-            <!-- Show children when editing -->
+        </div>
+
+            <!-- Sub-items scroll on their own. Text fields stay outside that
+                 scroller, because Android misplaces inputs once it has to scroll. -->
             <div v-if="currentItem && localChildren.length > 0" class="children-section">
-                <ion-item class="sub-items-header">
+                <ion-item class="item-legacy sub-items-header">
                     <div><strong>Sub-items:</strong></div>
                 </ion-item>
-                <ion-item v-for="(child, index) in localChildren" :key="index" class="sub-item-row">
-                    <div>{{ child.name }}</div>
+                <ion-item v-for="(child, index) in localChildren" :key="index" class="item-legacy sub-item-row">
+                    <ion-label class="sub-item-name">{{ child.name }}</ion-label>
                     <ion-button slot="end" fill="clear" @click="removeChild(index)">
                         <ion-icon slot="icon-only" :icon="trash"></ion-icon>
                     </ion-button>
                 </ion-item>
             </div>
-        </ion-content>
+        </div>
     </ion-modal>
 </template>
   
@@ -89,7 +92,6 @@ import {
     IonButtons,
     IonButton,
     IonTitle,
-    IonContent,
     IonInput,
     IonItem,
     IonLabel,
@@ -189,6 +191,23 @@ const openModal = (modalText: string, currentParent: ShoppingListItem | null = n
         localChecked.value = false;
     }
     addItemModal.value.$el.present();
+}
+
+function modalWrapper(): HTMLElement | null {
+    const modalEl = addItemModal.value?.$el as HTMLElement | undefined;
+    return modalEl?.shadowRoot?.querySelector('.modal-wrapper') ?? null;
+}
+
+function onModalPresented() {
+    // Drop the leftover translate so Android does not paint the fields off their rows.
+    // It is put back when closing so the dismiss animation can move the dialog.
+    const wrapper = modalWrapper();
+    if (wrapper) wrapper.style.transform = 'none';
+    focusNameInput();
+}
+
+function onModalWillDismiss() {
+    modalWrapper()?.style.removeProperty('transform');
 }
 
 function focusNameInput() {
@@ -306,10 +325,29 @@ defineExpose({
 </script>
 
 <style scoped>
+.edit-item-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: var(--ion-background-color, #fff);
+}
+
+.edit-item-form {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding: 16px 16px 0;
+}
+
 .children-section {
-    margin-top: 16px;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 16px 16px 0;
     border-top: 1px solid var(--ion-color-light);
     padding-top: 16px;
+    padding-bottom: 16px;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .add-child-section {
@@ -336,20 +374,10 @@ ion-item ion-label[position="stacked"] {
     --inner-padding-end: 16px;
     --min-height: 48px;
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
 }
 
 .checkbox-item ion-label[position="stacked"] {
     width: 100%;
-    margin-bottom: 0;
-    flex: 0 0 auto;
-}
-
-.checkbox-item ion-checkbox {
-    align-self: flex-end;
-    margin-top: 0;
     margin-bottom: 0;
 }
 
@@ -370,8 +398,11 @@ ion-item ion-label[position="stacked"] {
     max-width: 100%;
 }
 
-.children-section .sub-item-row ion-label {
+.children-section .sub-item-name {
     flex: 1;
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 </style>

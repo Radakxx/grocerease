@@ -1,13 +1,25 @@
 <template>
-  <ion-item-sliding @ionSwipe="$emit('swipe', $event, item)">
+  <!-- Single root so a reorder moves the row and its children together. -->
+  <div class="hierarchical-item">
+    <ion-item-sliding @ionSwipe="$emit('swipe', $event, item)">
     <ion-item
         :class="['item-legacy', `note-layout-${noteRowLayoutClass}`, { 'has-note': !!item.note }]"
         :style="{ paddingLeft: `${depth * 20}px` }"
       >
-      <!-- Conditionally render reorder icon only when custom sorting is enabled -->
-      <div v-if="customSortEnabled" slot="start" class="reorder-wrapper" :class="{ 'reorder-disabled': isReorderDisabled }">
-        <ion-reorder></ion-reorder>
-      </div>
+      <!-- Plain grip inside the row. A second background behind the item
+           paints another copy of the card when a parent is opened. -->
+      <button
+        v-if="customSortEnabled"
+        slot="start"
+        type="button"
+        class="reorder-handle"
+        :class="{ 'reorder-disabled': isReorderDisabled }"
+        :aria-disabled="isReorderDisabled"
+        aria-label="Reorder"
+        @pointerdown.stop="onReorderPointerDown"
+      >
+        <span class="reorder-grip"></span>
+      </button>
       <ion-button
         slot="start"
         class="expand-arrow-button"
@@ -53,57 +65,31 @@
         Delete
       </ion-item-option>
     </ion-item-options>
-  </ion-item-sliding>
+    </ion-item-sliding>
 
-  <!-- Recursive children -->
-  <template v-if="showExpandControl && effectiveExpanded">
-    <div class="children-container">
-      <ion-reorder-group
-        v-if="customSortEnabled"
-        :disabled="hasExpandedChildren || searchActive"
-        @ionItemReorder.stop="handleChildReorder"
-      >
-        <HierarchicalItem
-          v-for="(child, childIndex) in displayChildren"
-          :key="child.id"
-          :item="child"
-          :path="`${path}-${childIndex}`"
-          :depth="depth + 1"
-          :is-parent-reorder-disabled="hasExpandedChildren"
-          :custom-sort-enabled="customSortEnabled"
-          :search-active="searchActive"
-          :search-child-map="searchChildMap"
-          @toggle-expand="$emit('toggle-expand', $event)"
-          @edit-item="$emit('edit-item', $event)"
-          @add-note="$emit('add-note', $event)"
-          @delete-item="$emit('delete-item', $event)"
-          @check-item="(item, checked) => $emit('check-item', item, checked)"
-          @swipe="(event, item) => $emit('swipe', event, item)"
-          @item-reorder="$emit('item-reorder', $event)"
-        />
-      </ion-reorder-group>
-      <template v-else>
-        <HierarchicalItem
-          v-for="(child, childIndex) in displayChildren"
-          :key="child.id"
-          :item="child"
-          :path="`${path}-${childIndex}`"
-          :depth="depth + 1"
-          :is-parent-reorder-disabled="hasExpandedChildren"
-          :custom-sort-enabled="customSortEnabled"
-          :search-active="searchActive"
-          :search-child-map="searchChildMap"
-          @toggle-expand="$emit('toggle-expand', $event)"
-          @edit-item="$emit('edit-item', $event)"
-          @add-note="$emit('add-note', $event)"
-          @delete-item="$emit('delete-item', $event)"
-          @check-item="(item, checked) => $emit('check-item', item, checked)"
-          @swipe="(event, item) => $emit('swipe', event, item)"
-          @item-reorder="$emit('item-reorder', $event)"
-        />
-      </template>
-    </div>
-  </template>
+  <!-- Recursive children. Same nodes whether or not custom sorting is on. -->
+  <div v-if="showExpandControl && effectiveExpanded" class="children-container">
+    <HierarchicalItem
+      v-for="(child, childIndex) in displayChildren"
+      :key="child.id"
+      :item="child"
+      :parent-item="item"
+      :path="`${path}-${childIndex}`"
+      :depth="depth + 1"
+      :is-parent-reorder-disabled="hasExpandedChildren"
+      :custom-sort-enabled="customSortEnabled"
+      :search-active="searchActive"
+      :search-child-map="searchChildMap"
+      @toggle-expand="$emit('toggle-expand', $event)"
+      @edit-item="$emit('edit-item', $event)"
+      @add-note="$emit('add-note', $event)"
+      @delete-item="$emit('delete-item', $event)"
+      @check-item="(item, checked) => $emit('check-item', item, checked)"
+      @swipe="(event, item) => $emit('swipe', event, item)"
+      @item-reorder="$emit('item-reorder', $event)"
+    />
+  </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -117,8 +103,6 @@ import {
   IonIcon,
   IonLabel,
   IonCheckbox,
-  IonReorder,
-  IonReorderGroup,
 } from '@ionic/vue';
 import { chevronDown, chevronForward, bagAdd, trash } from 'ionicons/icons';
 import type { ShoppingListItem } from '@/composables/items';
@@ -128,6 +112,7 @@ const { noteRowLayoutClass } = useSettings();
 
 const props = defineProps<{
   item: ShoppingListItem;
+  parentItem?: ShoppingListItem | null;
   path: string;
   depth: number;
   isParentReorderDisabled?: boolean; // Whether parent reorder group is disabled
@@ -203,7 +188,7 @@ const hasExpandedChildren = computed(() => {
 const isReorderDisabled = computed(() => {
   // For both root and nested items, use the parent's disabled state
   // This checks if any items at the same level are expanded
-  return props.isParentReorderDisabled ?? false;
+  return !!props.searchActive || (props.isParentReorderDisabled ?? false);
 });
 
 const handleCheckboxChange = (event: CustomEvent) => {
@@ -211,41 +196,106 @@ const handleCheckboxChange = (event: CustomEvent) => {
   emit('check-item', props.item, isChecked);
 };
 
-// Handle reordering of child items
-const handleChildReorder = (event: CustomEvent) => {
-  // Stop event propagation immediately to prevent affecting parent reorder groups
-  if (event.stopPropagation) {
-    event.stopPropagation();
+const siblingRows = (row: HTMLElement): HTMLElement[] => {
+  const container = row.parentElement;
+  if (!container) return [];
+  return Array.from(container.children).filter(
+    (el): el is HTMLElement => el instanceof HTMLElement && el.classList.contains('hierarchical-item'),
+  );
+};
+
+// The grabbed row follows the pointer. Siblings shift to open a gap.
+// Transforms are cleared before the list order changes, so nothing stays shifted.
+const onReorderPointerDown = (event: PointerEvent) => {
+  if (isReorderDisabled.value || !props.customSortEnabled) return;
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  const handle = event.currentTarget;
+  if (!(handle instanceof HTMLElement)) return;
+  const row = handle.closest('.hierarchical-item');
+  if (!(row instanceof HTMLElement)) return;
+
+  const slots = siblingRows(row).map((el) => {
+    const rect = el.getBoundingClientRect();
+    return { el, top: rect.top, height: rect.height };
+  });
+  const from = slots.findIndex((slot) => slot.el === row);
+  if (from < 0) return;
+
+  event.preventDefault();
+  try {
+    handle.setPointerCapture(event.pointerId);
+  } catch {
+    // Pointer capture is unavailable for this event. Move listeners still run.
   }
 
-  if (props.searchActive) {
-    event.detail.complete();
-    return;
-  }
+  const startY = event.clientY;
+  const draggedHeight = slots[from].height;
+  let to = from;
+  row.classList.add('reorder-dragging');
 
-  const fromIndex = event.detail.from;
-  const toIndex = event.detail.to;
+  const placeAt = (clientY: number) => {
+    // Swap only after this row crosses the midpoint of a neighbor, in either direction.
+    const dy = clientY - startY;
+    const visualTop = slots[from].top + dy;
+    const visualBottom = visualTop + draggedHeight;
+    let next = from;
+    for (let i = from + 1; i < slots.length; i++) {
+      const mid = slots[i].top + slots[i].height / 2;
+      if (visualBottom > mid) next = i;
+      else break;
+    }
+    for (let i = from - 1; i >= 0; i--) {
+      const mid = slots[i].top + slots[i].height / 2;
+      if (visualTop < mid) next = i;
+      else break;
+    }
+    to = next;
+    for (let i = 0; i < slots.length; i++) {
+      const el = slots[i].el;
+      if (i === from) {
+        el.style.transition = 'none';
+        el.style.transform = `translateY(${clientY - startY}px)`;
+        continue;
+      }
+      let shift = 0;
+      if (from < to && i > from && i <= to) shift = -draggedHeight;
+      else if (to < from && i >= to && i < from) shift = draggedHeight;
+      el.style.transition = 'transform 160ms ease';
+      el.style.transform = shift ? `translateY(${shift}px)` : '';
+    }
+  };
 
-  // Validate indices are within bounds
-  if (
-    props.item.children &&
-    props.item.children.length > 0 &&
-    fromIndex >= 0 &&
-    fromIndex < props.item.children.length &&
-    toIndex >= 0 &&
-    toIndex < props.item.children.length
-  ) {
-    // Emit the reorder event with parent information - parent will handle the mutation
-    emit('item-reorder', {
-      item: props.item.children[fromIndex],
-      fromIndex,
-      toIndex,
-      parent: props.item,
+  const finish = (ev: PointerEvent) => {
+    if (ev.pointerId !== event.pointerId) return;
+    handle.removeEventListener('pointermove', onMove);
+    handle.removeEventListener('pointerup', finish);
+    handle.removeEventListener('pointercancel', finish);
+    row.classList.remove('reorder-dragging');
+    for (const slot of slots) {
+      slot.el.style.transition = 'none';
+      slot.el.style.transform = '';
+    }
+    if (to !== from) {
+      emit('item-reorder', {
+        item: props.item,
+        fromIndex: from,
+        toIndex: to,
+        parent: props.parentItem ?? null,
+      });
+    }
+    requestAnimationFrame(() => {
+      for (const slot of slots) slot.el.style.transition = '';
     });
-  }
+  };
 
-  // Complete the reorder
-  event.detail.complete();
+  const onMove = (ev: PointerEvent) => {
+    if (ev.pointerId !== event.pointerId) return;
+    ev.preventDefault();
+    placeAt(ev.clientY);
+  };
+  handle.addEventListener('pointermove', onMove);
+  handle.addEventListener('pointerup', finish);
+  handle.addEventListener('pointercancel', finish);
 };
 </script>
 
@@ -265,22 +315,44 @@ ion-item {
   min-width: 32px;
 }
 
-.children-container {
-  /* Isolate nested reorder groups */
-  position: relative;
+.hierarchical-item {
+  display: block;
 }
 
-/* Reorder icon wrapper - only rendered when custom sorting is enabled */
-.reorder-wrapper {
-  min-width: 32px !important;
-  width: 32px !important;
-  display: block !important;
-  flex-shrink: 0;
+.hierarchical-item.reorder-dragging {
   position: relative;
-  box-sizing: border-box;
-  /* Reduce gap between drag handle and arrow (Ionic defaults to 16px on slot=start) */
+  z-index: 3;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.children-container {
+  display: block;
+}
+
+.reorder-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  min-width: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ion-color-medium, #92949c);
+  touch-action: none;
   -webkit-margin-end: 6px;
   margin-inline-end: 6px;
+}
+
+.reorder-grip {
+  width: 18px;
+  height: 12px;
+  background:
+    linear-gradient(currentColor, currentColor) 0 0 / 100% 2px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 5px / 100% 2px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 10px / 100% 2px no-repeat;
 }
 
 /* Match spacing between arrow and name to spacing between drag and arrow */
@@ -295,21 +367,8 @@ ion-item {
   pointer-events: none;
 }
 
-.reorder-wrapper.reorder-disabled {
-  opacity: 0.3;
+.reorder-handle.reorder-disabled {
   pointer-events: none;
-}
-
-.reorder-wrapper.reorder-disabled ion-reorder {
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-/* Ensure ion-reorder inside wrapper is always visible */
-.reorder-wrapper ion-reorder {
-  display: block !important;
-  visibility: visible !important;
-  min-width: 32px !important;
-  width: 32px !important;
+  color: color-mix(in srgb, var(--ion-color-medium, #92949c) 45%, transparent);
 }
 </style>
